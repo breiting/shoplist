@@ -4,7 +4,6 @@ import (
 	"embed"
 	"io/fs"
 	"net/http"
-	"time"
 )
 
 //go:embed web/*
@@ -15,13 +14,19 @@ type Config struct {
 }
 
 func NewServer(cfg Config) *http.Server {
+	app, err := NewApp()
+	if err != nil {
+		panic(err)
+	}
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("ok\n"))
+		w.Write([]byte("ok\n"))
 	})
+
+	app.registerAuthRoutes(mux)
 
 	staticFS, err := fs.Sub(webFS, "web")
 	if err != nil {
@@ -33,12 +38,8 @@ func NewServer(cfg Config) *http.Server {
 	h := securityHeaders(mux)
 
 	return &http.Server{
-		Addr:              cfg.Addr,
-		Handler:           h,
-		ReadHeaderTimeout: 5 * time.Second,
-		ReadTimeout:       10 * time.Second,
-		WriteTimeout:      10 * time.Second,
-		IdleTimeout:       60 * time.Second,
+		Addr:    cfg.Addr,
+		Handler: h,
 	}
 }
 
