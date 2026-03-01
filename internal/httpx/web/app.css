@@ -1,5 +1,4 @@
 :root {
-  /* System font stack feels close to Apple UI */
   font-family:
     system-ui,
     -apple-system,
@@ -20,15 +19,26 @@
   --subtle: rgba(255, 255, 255, 0.1);
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
   --radius: 16px;
-}
 
-@media (prefers-color-scheme: light) {
-  /* Keep it dark anyway. If you want "auto", we can invert this later. */
+  /* Sizing */
+  --control-h: 44px;
+  --control-r: 14px;
+
+  /* Form widths */
+  --form-max: 520px;
+  --add-max: 700px;
+  --shop-col: 160px;
 }
 
 html,
 body {
   height: 100%;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 body {
@@ -48,10 +58,11 @@ body {
   color: var(--text);
 }
 
+/* Layout */
 .wrap {
-  max-width: 780px;
+  max-width: 820px;
   margin: 0 auto;
-  padding: 18px 16px 24px;
+  padding: 18px 16px 28px;
 }
 
 .top {
@@ -69,11 +80,11 @@ h1 {
 }
 
 h2 {
-  margin: 0 0 12px 0;
-  font-size: 14px;
+  margin: 14px 0 12px 0;
+  font-size: 13px;
   color: var(--muted);
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -81,7 +92,7 @@ h2 {
   background: var(--card);
   border: 1px solid var(--card-border);
   border-radius: var(--radius);
-  padding: 14px;
+  padding: 18px;
   margin-bottom: 12px;
   box-shadow: var(--shadow);
   backdrop-filter: blur(16px);
@@ -101,38 +112,52 @@ h2 {
 .stack {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
+/* Controls */
 input[type="text"],
-input[type="password"] {
+input[type="password"],
+select {
   width: 100%;
-  padding: 12px 12px;
-  border-radius: 14px;
+  height: var(--control-h);
+  padding: 0 12px;
+  border-radius: var(--control-r);
   border: 1px solid var(--subtle);
   background: rgba(255, 255, 255, 0.06);
   color: var(--text);
   outline: none;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  font-size: 16px; /* iOS zoom fix */
+  line-height: 1.2;
 }
 
 input::placeholder {
   color: rgba(255, 255, 255, 0.35);
 }
 
-input:focus {
+input:focus,
+select:focus {
   border-color: rgba(255, 255, 255, 0.22);
   background: rgba(255, 255, 255, 0.08);
 }
 
+select {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
 button {
-  padding: 11px 14px;
-  border-radius: 14px;
+  height: var(--control-h);
+  padding: 0 16px;
+  border-radius: var(--control-r);
   border: 1px solid var(--subtle);
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
   color: var(--text);
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   letter-spacing: -0.01em;
+  white-space: nowrap;
 }
 
 button:active {
@@ -140,11 +165,12 @@ button:active {
 }
 
 button.ghost {
+  height: auto;
   background: transparent;
   border-color: transparent;
   padding: 8px 10px;
   color: var(--muted);
-  font-weight: 600;
+  font-weight: 650;
 }
 
 button.ghost:hover {
@@ -152,9 +178,10 @@ button.ghost:hover {
 }
 
 button.linkish {
+  height: auto;
   background: transparent;
   border: none;
-  padding: 0;
+  padding: 6px 0;
   text-align: left;
   font: inherit;
   color: var(--text);
@@ -166,10 +193,42 @@ button.linkish:hover {
   text-decoration-color: rgba(255, 255, 255, 0.35);
 }
 
+/* Forms sizing (tight and consistent) */
+#loginForm {
+  max-width: var(--form-max);
+  margin: 0 auto;
+}
+
+#loginForm button {
+  width: 100%;
+}
+
+#addForm {
+  max-width: var(--add-max);
+  margin: 0 auto 14px auto;
+  display: grid;
+  grid-template-columns: var(--shop-col) minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+#newText {
+  min-width: 0; /* critical in CSS grid: allow shrinking without overflow */
+}
+
+@media (max-width: 520px) {
+  #addForm {
+    max-width: 100%;
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Content split */
 .split {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 14px;
+  gap: 18px;
+  margin-top: 10px;
 }
 
 @media (min-width: 700px) {
@@ -178,19 +237,23 @@ button.linkish:hover {
   }
 }
 
+.split > section {
+  padding-top: 6px;
+}
+
 /* Lists */
 .list {
   list-style: none;
   padding: 0;
-  margin: 0;
+  margin: 6px 0 0 0;
 }
 
 .li {
   display: grid;
   grid-template-columns: 34px 1fr 38px;
   align-items: center;
-  gap: 10px;
-  padding: 10px 6px;
+  gap: 12px;
+  padding: 14px 6px;
   border-top: 1px solid rgba(255, 255, 255, 0.07);
 }
 
@@ -270,4 +333,14 @@ button.linkish:hover {
 
 .hidden {
   display: none !important;
+}
+
+#btnAdd {
+  width: var(--control-h);
+  padding: 0;
+  font-size: 22px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }

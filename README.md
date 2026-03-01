@@ -1,18 +1,9 @@
-# shoplist
+# ShopList
 
-A minimal family shopping list web app.
+A minimal family shopping list web app. Just does the thing nothing more!
 
-Goals:
+## Goal
 
-- Works on iPhone (Safari) and GrapheneOS (Chromium) as a PWA.
-- Single small backend (Go) + SQLite (next steps).
-- Simple, Unix-like deployment (Docker Compose).
-
-## Development
-
-Run locally:
-
-```bash
-go test ./...
-SHOPLIST_ADDR=:8080 go run ./cmd/shoplist
-```
+- Works on iPhone and GrapheneOS as a PWA.
+- Single small backend (Go) + SQLite
+- Simple deployment
