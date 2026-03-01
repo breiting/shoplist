@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -123,17 +122,21 @@ CREATE INDEX IF NOT EXISTS idx_templates_last_used ON templates(last_used_at);
 		return err
 	}
 	if !hasShop {
-		// Default to empty string for old rows; app will treat "" as DefaultShop on read if needed.
 		if _, err := db.Exec(`ALTER TABLE items ADD COLUMN shop TEXT NOT NULL DEFAULT ''`); err != nil {
 			return err
 		}
+		_, _ = db.Exec(`CREATE INDEX IF NOT EXISTS idx_items_shop_done_updated ON items(shop, done, updated_at)`)
+	}
 
-		if _, err := db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS uq_items_shop_text ON items(shop, text)`); err != nil {
+	// --- v1.1: add qty to items if missing (optional text)
+	hasQty, err := tableHasColumn(db, "items", "qty")
+	if err != nil {
+		return err
+	}
+	if !hasQty {
+		if _, err := db.Exec(`ALTER TABLE items ADD COLUMN qty TEXT NOT NULL DEFAULT ''`); err != nil {
 			return err
 		}
-
-		// helpful index
-		_, _ = db.Exec(`CREATE INDEX IF NOT EXISTS idx_items_shop_done_updated ON items(shop, done, updated_at)`)
 	}
 
 	// --- Upgrade: templates must become (shop,text) unique to preserve history per shop
@@ -142,7 +145,6 @@ CREATE INDEX IF NOT EXISTS idx_templates_last_used ON templates(last_used_at);
 		return err
 	}
 	if !templatesHasShop {
-		// Rebuild table because UNIQUE(text) is wrong for shop-specific history.
 		tx, err := db.Begin()
 		if err != nil {
 			return err
@@ -164,7 +166,7 @@ CREATE INDEX IF NOT EXISTS idx_templates_new_last_used ON templates_new(last_use
 			return err
 		}
 
-		// migrate old templates into default shop "" (empty) bucket
+		// migrate old templates into default shop "" bucket
 		_, err = tx.Exec(`
 INSERT INTO templates_new(shop, text, last_used_at, use_count)
 SELECT '', text, last_used_at, use_count FROM templates
@@ -185,6 +187,28 @@ SELECT '', text, last_used_at, use_count FROM templates
 		if err := tx.Commit(); err != nil {
 			return err
 		}
+	}
+
+	// --- Upgrade: enforce uniqueness per (shop,text) for items
+	// Deduplicate existing rows first (keep most recently updated row).
+	_, _ = db.Exec(`
+DELETE FROM items
+WHERE id NOT IN (
+  SELECT id FROM (
+    SELECT id
+    FROM items i1
+    WHERE i1.id = (
+      SELECT i2.id
+      FROM items i2
+      WHERE i2.shop = i1.shop AND i2.text = i1.text
+      ORDER BY i2.updated_at DESC, i2.id DESC
+      LIMIT 1
+    )
+  )
+)
+`)
+	if _, err := db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS uq_items_shop_text ON items(shop, text)`); err != nil {
+		return err
 	}
 
 	return nil
@@ -228,7 +252,12 @@ func parseCSV(s string) []string {
 }
 
 func contains(xs []string, v string) bool {
-	return slices.Contains(xs, v)
+	for _, x := range xs {
+		if x == v {
+			return true
+		}
+	}
+	return false
 }
 
 func getenv(k, def string) string {

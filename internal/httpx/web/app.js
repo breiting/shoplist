@@ -2,7 +2,6 @@ async function api(path, opts = {}) {
   const res = await fetch(path, {
     ...opts,
     headers: {
-      // Only set JSON content-type if caller didn't override it.
       ...(opts.headers || {}),
       "Content-Type":
         (opts.headers && opts.headers["Content-Type"]) || "application/json",
@@ -88,6 +87,15 @@ async function clearDone(shop) {
   if (!res.ok) throw new Error(`clear: ${res.status}`);
 }
 
+async function setQty(id, qty) {
+  const res = await api(`/api/items/${id}/qty`, {
+    method: "POST",
+    body: JSON.stringify({ qty }),
+  });
+  if (!res.ok) throw new Error(`qty: ${res.status}`);
+  return await res.json();
+}
+
 function renderItems(items) {
   const ul = qs("items");
   ul.innerHTML = "";
@@ -96,6 +104,7 @@ function renderItems(items) {
     const li = document.createElement("li");
     li.className = "li";
 
+    // Checkbox
     const cbWrap = document.createElement("label");
     cbWrap.className = "cb";
     cbWrap.dataset.checked = it.done ? "1" : "0";
@@ -108,7 +117,6 @@ function renderItems(items) {
     mark.className = "mark";
 
     cb.addEventListener("change", async () => {
-      // optimistic UI
       cbWrap.dataset.checked = cb.checked ? "1" : "0";
       try {
         await toggleItem(it.id);
@@ -123,10 +131,28 @@ function renderItems(items) {
     cbWrap.appendChild(cb);
     cbWrap.appendChild(mark);
 
+    // Text
     const txt = document.createElement("span");
-    txt.textContent = it.text; // shop is the active scope, don't prefix
+    txt.textContent = it.text;
     txt.className = "itemText" + (it.done ? " done" : "");
 
+    // Qty pill (tap to edit)
+    const qtyHost = document.createElement("span");
+    qtyHost.className = "qtyHost";
+
+    const qtyBtn = document.createElement("button");
+    qtyBtn.type = "button";
+    qtyBtn.className = "qtyPill" + (it.qty && it.qty.trim() ? "" : " empty");
+    qtyBtn.textContent = it.qty && it.qty.trim() ? it.qty.trim() : "Qty";
+    qtyBtn.title = "Set quantity";
+
+    qtyBtn.addEventListener("click", () =>
+      startQtyEdit(qtyHost, it.id, it.qty || ""),
+    );
+
+    qtyHost.appendChild(qtyBtn);
+
+    // Delete
     const del = document.createElement("button");
     del.type = "button";
     del.className = "ghost";
@@ -143,9 +169,60 @@ function renderItems(items) {
 
     li.appendChild(cbWrap);
     li.appendChild(txt);
+    li.appendChild(qtyHost);
     li.appendChild(del);
     ul.appendChild(li);
   }
+}
+
+function startQtyEdit(host, id, currentQty) {
+  // Close any other active editor
+  const prev = document.querySelector(".qtyInput");
+  if (prev) {
+    prev.blur(); // triggers its save handler
+  }
+
+  host.innerHTML = "";
+
+  const inp = document.createElement("input");
+  inp.type = "text";
+  inp.inputMode = "text";
+  inp.autocomplete = "off";
+  inp.className = "qtyInput";
+  inp.placeholder = "Qty";
+  inp.value = currentQty || "";
+
+  let saved = false;
+  const commit = async () => {
+    if (saved) return;
+    saved = true;
+    try {
+      await setQty(id, inp.value.trim());
+      await refresh();
+    } catch (e) {
+      console.error(e);
+      await refresh();
+    }
+  };
+
+  inp.addEventListener("keydown", async (ev) => {
+    if (ev.key === "Enter") {
+      ev.preventDefault();
+      inp.blur(); // will commit via blur
+    } else if (ev.key === "Escape") {
+      ev.preventDefault();
+      saved = true; // prevent commit
+      refresh().catch(console.error);
+    }
+  });
+
+  inp.addEventListener("blur", () => {
+    commit().catch(console.error);
+  });
+
+  host.appendChild(inp);
+  inp.focus();
+  inp.select();
 }
 
 function renderHistory(history) {
@@ -154,12 +231,12 @@ function renderHistory(history) {
 
   for (const t of history) {
     const li = document.createElement("li");
-    li.className = "li";
+    li.className = "liHistory";
 
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "linkish";
-    btn.textContent = t.text; // shop is the active scope
+    btn.textContent = t.text;
 
     btn.addEventListener("click", async () => {
       try {
@@ -176,8 +253,6 @@ function renderHistory(history) {
   }
 }
 
-// Populates select once, returns current selected shop.
-// On change, persists to localStorage and refreshes lists (shop scope).
 function ensureShopSelect(cfg) {
   const sel = qs("shopSelect");
   if (!sel) return cfg.defaultShop;
@@ -198,11 +273,9 @@ function ensureShopSelect(cfg) {
     });
   }
 
-  // Only apply preferred selection if it's different.
   const saved = localStorage.getItem("shoplist_shop");
   const preferred =
     saved && (cfg.shops || []).includes(saved) ? saved : cfg.defaultShop;
-
   if (preferred && sel.value !== preferred) {
     sel.value = preferred;
   }
