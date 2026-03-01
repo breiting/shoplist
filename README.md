@@ -1,55 +1,57 @@
-# ShopList
+# 🛒 ShopList
 
-A tiny, self-hosted shopping list for families.
+> A tiny, blazing-fast, self-hosted shopping list for families — no cloud, no nonsense.
 
-- Works on iPhone (Safari) and GrapheneOS (any Chromium-based browser)
-- Web-based (no native apps), installable as a PWA (Add to Home Screen)
-- Minimal backend: Go + SQLite (single DB file)
-- Designed for simple homelab deployments (OPNsense/HAProxy, Proxmox, Debian, LXC)
+[![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go)](https://golang.org)
+[![SQLite](https://img.shields.io/badge/SQLite-WAL-003B57?style=flat&logo=sqlite)](https://sqlite.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8?style=flat)](https://web.dev/progressive-web-apps/)
 
-## Motivation
+**Works on iPhone (Safari) and GrapheneOS (Chromium) · Installable as a PWA · Single binary · Zero subscriptions**
 
-Most shopping list apps are either:
+![shoplist screenshot](assets/screenshot.png)
 
-- cloud-first (accounts, sync services, subscriptions),
-- heavy (framework stacks, multiple services),
-- or not ideal for privacy-focused setups.
+## 🤔 Why ShopList?
 
-**shoplist** is the opposite:
+Most shopping list apps are either cloud-first, bloated, or privacy-hostile. **ShopList** is built for people who want full control:
 
-- Self-hosted
-- Single binary
-- Single SQLite database file
-- No user management, just a shared household password
-- Intentionally small and focused
+| Problem with other apps           | ShopList's answer             |
+| --------------------------------- | ----------------------------- |
+| ☁️ Requires cloud accounts & sync | 🏠 100% self-hosted           |
+| 🏗️ Heavy framework stacks         | ⚡ Single Go binary           |
+| 💾 Multiple services & databases  | 🗄️ One SQLite file            |
+| 👤 Complex user management        | 🔑 Shared household password  |
+| 💸 Subscriptions                  | 🆓 MIT licensed, free forever |
 
-It follows a Unix philosophy: do one thing well.
+> _Follows the Unix philosophy: do one thing well._
 
-## Features
+## ✨ Features
 
-- Shared household login via password session
-- Multiple shops (e.g. Spar, Billa, Bauernladen)
-- No duplicates per shop
-- Check/uncheck items
-- Clear completed items
-- “Last used” history per shop
-- Optional quantity per item (free text: `2`, `10 dag`, `250 g`, …)
-- PWA installable (iOS + GrapheneOS)
+- 🔐 **Shared household login** via password session
+- 🏪 **Multiple shops** (e.g. Spar, Billa, Bauernladen)
+- 🚫 **No duplicates** per shop
+- ✅ **Check/uncheck items** with one tap
+- 🧹 **Clear completed items** instantly
+- 🕐 **"Last used" history** per shop
+- ⚖️ **Optional quantity** per item — free text: `2`, `10 dag`, `250 g`, …
+- 📱 **PWA installable** on iOS + GrapheneOS (Add to Home Screen)
 
-## Tech Stack
+## 🧱 Tech Stack
 
-- Backend: Go (net/http)
-- Database: SQLite (single file, WAL enabled)
-- Frontend: HTML + minimal JS + CSS
-- No frameworks
+| Layer      | Technology                        |
+| ---------- | --------------------------------- |
+| Backend    | Go (`net/http`)                   |
+| Database   | SQLite (single file, WAL enabled) |
+| Frontend   | HTML + minimal JS + CSS           |
+| Frameworks | _(none)_                          |
 
-# Quick Start
+## 🚀 Quick Start
 
-## Requirements
+### Requirements
 
 - Go 1.25+
 
-## Run
+### Run locally
 
 ```bash
 export SHOPLIST_PASSWORD='your-long-household-passphrase'
@@ -62,68 +64,70 @@ export SHOPLIST_COOKIE_SECURE='0'
 go run ./cmd/shoplist
 ```
 
-Open `http://localhost:8080`
+Open [http://localhost:8080](http://localhost:8080) and start shopping. 🎉
 
-# Build
+## 🔨 Build
 
 ```bash
 go build -o shoplist ./cmd/shoplist
 ```
 
-## Cross compile (Linux amd64)
+### Cross-compile for Linux amd64
 
 ```bash
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o shoplist ./cmd/shoplist
 ```
 
-# Configuration
+## ⚙️ Configuration
 
-| Variable                  | Description                |
-| ------------------------- | -------------------------- |
-| SHOPLIST_ADDR             | Listen address             |
-| SHOPLIST_PASSWORD         | Shared password (required) |
-| SHOPLIST_DATA_DIR         | Directory for SQLite DB    |
-| SHOPLIST_SESSION_TTL_DAYS | Session duration           |
-| SHOPLIST_COOKIE_SECURE    | Set 1 when behind HTTPS    |
-| SHOPLIST_SHOPS            | Comma-separated shop list  |
-| SHOPLIST_DEFAULT_SHOP     | Default shop               |
+| Variable                    | Description                            |
+| --------------------------- | -------------------------------------- |
+| `SHOPLIST_ADDR`             | Listen address (e.g. `:8080`)          |
+| `SHOPLIST_PASSWORD`         | Shared household password _(required)_ |
+| `SHOPLIST_DATA_DIR`         | Directory for SQLite DB                |
+| `SHOPLIST_SESSION_TTL_DAYS` | Session duration in days               |
+| `SHOPLIST_COOKIE_SECURE`    | Set `1` when running behind HTTPS      |
+| `SHOPLIST_SHOPS`            | Comma-separated shop list              |
+| `SHOPLIST_DEFAULT_SHOP`     | Default selected shop                  |
 
-# Deployment
+## 🏗️ Deployment
 
-## Debian LXC (Proxmox recommended)
+### 🐧 Debian LXC (recommended for Proxmox homelabs)
 
-1.  Create Debian LXC (1 vCPU, 512MB RAM)
-2.  Copy binary to /usr/local/bin/shoplist
-3.  Create data dir: /var/lib/shoplist
-4.  Create systemd service
-5.  Run behind HTTPS reverse proxy
+1. Create a Debian LXC container (1 vCPU, 512 MB RAM is plenty)
+2. Copy the binary: `cp shoplist /usr/local/bin/shoplist`
+3. Create data dir: `mkdir -p /var/lib/shoplist`
+4. Set up a systemd service (see below)
+5. Put it behind an HTTPS reverse proxy (HAProxy, Caddy, nginx, …)
 
-Logs:
+**View logs:**
 
 ```bash
 journalctl -u shoplist -f
 ```
 
-## Docker
+### 🐳 Docker
 
 ```bash
 docker compose up -d --build
 ```
 
-# Backups
+## 💾 Backups
 
-SQLite database file is located at:
+The entire state lives in one file:
 
-`SHOPLIST_DATA_DIR/shoplist.db`
+```
+$SHOPLIST_DATA_DIR/shoplist.db
+```
 
-Back up the entire directory.
+Back up the whole directory. That's it. Restore by copying it back. 🎯
 
-# Security
+## 🔒 Security
 
-- Use a long password (20+ chars)
-- Run behind HTTPS
-- Enable SHOPLIST_COOKIE_SECURE=1
+- Use a **long passphrase** (20+ characters)
+- Always run behind **HTTPS**
+- Set `SHOPLIST_COOKIE_SECURE=1` in production
 
-# License
+## 📄 License
 
-MIT License
+MIT — use it, fork it, self-host it. ❤️
