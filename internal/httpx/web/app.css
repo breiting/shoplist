@@ -205,15 +205,14 @@ button.linkish:hover {
   border-radius: 9px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   background: rgba(255, 255, 255, 0.06);
-  display: inline-grid;
-  place-items: center;
+  display: inline-block;
+  position: relative;
   cursor: pointer;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
 
 .cb input {
-  /* hide native checkbox */
   appearance: none;
   -webkit-appearance: none;
   width: 0;
@@ -222,11 +221,14 @@ button.linkish:hover {
 }
 
 .cb .mark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
   width: 12px;
   height: 7px;
   border-left: 3px solid transparent;
   border-bottom: 3px solid transparent;
-  transform: rotate(-45deg);
+  transform: translate(-50%, -60%) rotate(-45deg);
   opacity: 0;
 }
 

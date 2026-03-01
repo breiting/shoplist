@@ -81,22 +81,36 @@ function renderItems(items) {
     const li = document.createElement("li");
     li.className = "li";
 
+    const cbWrap = document.createElement("label");
+    cbWrap.className = "cb";
+    cbWrap.dataset.checked = it.done ? "1" : "0";
+
     const cb = document.createElement("input");
     cb.type = "checkbox";
     cb.checked = !!it.done;
+
+    const mark = document.createElement("span");
+    mark.className = "mark";
+
     cb.addEventListener("change", async () => {
+      // optimistic UI
+      cbWrap.dataset.checked = cb.checked ? "1" : "0";
       try {
         await toggleItem(it.id);
         await refresh();
       } catch (e) {
         console.error(e);
         cb.checked = !cb.checked;
+        cbWrap.dataset.checked = cb.checked ? "1" : "0";
       }
     });
 
+    cbWrap.appendChild(cb);
+    cbWrap.appendChild(mark);
+
     const txt = document.createElement("span");
     txt.textContent = it.text;
-    txt.className = it.done ? "done" : "";
+    txt.className = "itemText" + (it.done ? " done" : "");
 
     const del = document.createElement("button");
     del.type = "button";
@@ -112,7 +126,7 @@ function renderItems(items) {
       }
     });
 
-    li.appendChild(cb);
+    li.appendChild(cbWrap);
     li.appendChild(txt);
     li.appendChild(del);
     ul.appendChild(li);
