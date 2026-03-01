@@ -18,9 +18,16 @@ body {
 }
 
 .wrap {
-  max-width: 720px;
+  max-width: 780px;
   margin: 0 auto;
   padding: 16px;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 h1 {
@@ -28,36 +35,105 @@ h1 {
   font-size: 22px;
 }
 
+h2 {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+}
+
 .card {
   border: 1px solid #ddd;
   border-radius: 10px;
   padding: 12px;
+  margin-bottom: 12px;
 }
 
 .row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
 }
 
-.label {
-  font-weight: 600;
+.row.end {
+  justify-content: flex-end;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+input[type="text"],
+input[type="password"] {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  outline: none;
 }
 
 button {
-  padding: 8px 12px;
+  padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid #ccc;
   background: #fafafa;
 }
 
-.out {
-  margin: 12px 0 0 0;
-  padding: 10px;
-  border-radius: 10px;
-  background: #f6f6f6;
-  overflow: auto;
+button.ghost {
+  background: transparent;
+  border-color: transparent;
+  padding: 6px 10px;
+}
+
+button.linkish {
+  background: transparent;
+  border: none;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline;
+}
+
+.split {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+@media (min-width: 700px) {
+  .split {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.li {
+  display: grid;
+  grid-template-columns: 22px 1fr 40px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid #eee;
+}
+
+.li:first-child {
+  border-top: none;
+}
+
+.done {
+  text-decoration: line-through;
+  color: #666;
+}
+
+.err {
+  color: #b00020;
+  margin: 0;
 }
 
 .muted {
@@ -66,4 +142,8 @@ button {
 
 .small {
   font-size: 13px;
+}
+
+.hidden {
+  display: none !important;
 }

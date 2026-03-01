@@ -4,6 +4,7 @@ import (
 	"embed"
 	"io/fs"
 	"net/http"
+	"time"
 )
 
 //go:embed web/*
@@ -22,8 +23,9 @@ func NewServer(cfg Config) *http.Server {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok\n"))
+		_, _ = w.Write([]byte("ok\n"))
 	})
 
 	app.registerAuthRoutes(mux)
@@ -32,17 +34,19 @@ func NewServer(cfg Config) *http.Server {
 	if err != nil {
 		panic(err)
 	}
-
 	mux.Handle("/", cacheControl(http.FileServer(http.FS(staticFS))))
 
 	h := securityHeaders(mux)
 
 	return &http.Server{
-		Addr:    cfg.Addr,
-		Handler: h,
+		Addr:              cfg.Addr,
+		Handler:           h,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
 }
-
 func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
