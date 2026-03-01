@@ -4,10 +4,13 @@ services:
     container_name: shoplist
     environment:
       - SHOPLIST_ADDR=:8080
-      - SHOPLIST_PASSWORD=changeme
+      - SHOPLIST_PASSWORD=your-long-household-passphrase
       - SHOPLIST_DATA_DIR=/data
       - SHOPLIST_SESSION_TTL_DAYS=180
+      # set to 1 when behind HTTPS reverse proxy
       - SHOPLIST_COOKIE_SECURE=0
+      - SHOPLIST_SHOPS=Spar,Billa,Bauernladen
+      - SHOPLIST_DEFAULT_SHOP=Spar
     volumes:
       - shoplist_data:/data
     ports:
