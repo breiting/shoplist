@@ -19,6 +19,7 @@ func (a *App) registerAuthRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /api/me", a.requireAuth(http.HandlerFunc(a.handleMe)))
 
 	a.registerItemRoutes(mux)
+	a.registerConfigRoute(mux)
 }
 
 func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {

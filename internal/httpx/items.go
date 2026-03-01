@@ -1,7 +1,6 @@
 package httpx
 
 import (
-	"database/sql"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -11,12 +10,14 @@ import (
 
 type Item struct {
 	ID        int64  `json:"id"`
+	Shop      string `json:"shop"`
 	Text      string `json:"text"`
 	Done      bool   `json:"done"`
 	UpdatedAt int64  `json:"updatedAt"`
 }
 
 type Template struct {
+	Shop       string `json:"shop"`
 	Text       string `json:"text"`
 	LastUsedAt int64  `json:"lastUsedAt"`
 	UseCount   int64  `json:"useCount"`
@@ -32,8 +33,31 @@ func (a *App) registerItemRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /api/history", a.requireAuth(http.HandlerFunc(a.handleHistory)))
 }
 
+func (a *App) shopFromQuery(r *http.Request) (string, bool) {
+	shop := strings.TrimSpace(r.URL.Query().Get("shop"))
+	if shop == "" {
+		shop = a.DefaultShop
+	}
+	if !contains(a.Shops, shop) {
+		return "", false
+	}
+	return shop, true
+}
+
 func (a *App) handleListItems(w http.ResponseWriter, r *http.Request) {
-	rows, err := a.DB.Query(`SELECT id, text, done, updated_at FROM items ORDER BY done ASC, updated_at DESC, id DESC`)
+	shop, ok := a.shopFromQuery(r)
+	if !ok {
+		http.Error(w, "invalid shop", http.StatusBadRequest)
+		return
+	}
+
+	rows, err := a.DB.Query(
+		`SELECT id, shop, text, done, updated_at
+		 FROM items
+		 WHERE shop = ?
+		 ORDER BY done ASC, updated_at DESC, id DESC`,
+		shop,
+	)
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
@@ -44,9 +68,12 @@ func (a *App) handleListItems(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var it Item
 		var doneInt int
-		if err := rows.Scan(&it.ID, &it.Text, &doneInt, &it.UpdatedAt); err != nil {
+		if err := rows.Scan(&it.ID, &it.Shop, &it.Text, &doneInt, &it.UpdatedAt); err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
+		}
+		if it.Shop == "" {
+			it.Shop = a.DefaultShop
 		}
 		it.Done = doneInt != 0
 		out = append(out, it)
@@ -57,12 +84,23 @@ func (a *App) handleListItems(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) handleAddItem(w http.ResponseWriter, r *http.Request) {
 	var req struct {
+		Shop string `json:"shop"`
 		Text string `json:"text"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
+
+	shop := strings.TrimSpace(req.Shop)
+	if shop == "" {
+		shop = a.DefaultShop
+	}
+	if !contains(a.Shops, shop) {
+		http.Error(w, "invalid shop", http.StatusBadRequest)
+		return
+	}
+
 	txt := normalizeText(req.Text)
 	if txt == "" {
 		http.Error(w, "text required", http.StatusBadRequest)
@@ -73,8 +111,8 @@ func (a *App) handleAddItem(w http.ResponseWriter, r *http.Request) {
 
 	// Insert item
 	res, err := a.DB.Exec(
-		`INSERT INTO items(text, done, created_at, updated_at) VALUES(?, 0, ?, ?)`,
-		txt, now, now,
+		`INSERT INTO items(shop, text, done, created_at, updated_at) VALUES(?, ?, 0, ?, ?)`,
+		shop, txt, now, now,
 	)
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
@@ -82,19 +120,18 @@ func (a *App) handleAddItem(w http.ResponseWriter, r *http.Request) {
 	}
 	id, _ := res.LastInsertId()
 
-	// Upsert template history
-	// Use SQLite ON CONFLICT to keep it simple.
+	// Upsert template history per shop
 	_, _ = a.DB.Exec(`
-INSERT INTO templates(text, last_used_at, use_count)
-VALUES(?, ?, 1)
-ON CONFLICT(text) DO UPDATE SET
+INSERT INTO templates(shop, text, last_used_at, use_count)
+VALUES(?, ?, ?, 1)
+ON CONFLICT(shop, text) DO UPDATE SET
 	last_used_at=excluded.last_used_at,
 	use_count=use_count+1
-`, txt, now)
+`, shop, txt, now)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	writeJSON(w, Item{ID: id, Text: txt, Done: false, UpdatedAt: now})
+	writeJSON(w, Item{ID: id, Shop: shop, Text: txt, Done: false, UpdatedAt: now})
 }
 
 func (a *App) handleToggleItem(w http.ResponseWriter, r *http.Request) {
@@ -106,7 +143,6 @@ func (a *App) handleToggleItem(w http.ResponseWriter, r *http.Request) {
 
 	now := time.Now().Unix()
 
-	// Toggle using CASE.
 	res, err := a.DB.Exec(`
 UPDATE items
 SET done = CASE done WHEN 0 THEN 1 ELSE 0 END,
@@ -123,14 +159,16 @@ WHERE id = ?
 		return
 	}
 
-	// Return updated item
 	var it Item
 	var doneInt int
-	err = a.DB.QueryRow(`SELECT id, text, done, updated_at FROM items WHERE id = ?`, id).
-		Scan(&it.ID, &it.Text, &doneInt, &it.UpdatedAt)
+	err = a.DB.QueryRow(`SELECT id, shop, text, done, updated_at FROM items WHERE id = ?`, id).
+		Scan(&it.ID, &it.Shop, &it.Text, &doneInt, &it.UpdatedAt)
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
+	}
+	if it.Shop == "" {
+		it.Shop = a.DefaultShop
 	}
 	it.Done = doneInt != 0
 
@@ -158,7 +196,13 @@ func (a *App) handleDeleteItem(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) handleClearDone(w http.ResponseWriter, r *http.Request) {
-	_, err := a.DB.Exec(`DELETE FROM items WHERE done = 1`)
+	shop, ok := a.shopFromQuery(r)
+	if !ok {
+		http.Error(w, "invalid shop", http.StatusBadRequest)
+		return
+	}
+
+	_, err := a.DB.Exec(`DELETE FROM items WHERE shop = ? AND done = 1`, shop)
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
@@ -167,6 +211,12 @@ func (a *App) handleClearDone(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) handleHistory(w http.ResponseWriter, r *http.Request) {
+	shop, ok := a.shopFromQuery(r)
+	if !ok {
+		http.Error(w, "invalid shop", http.StatusBadRequest)
+		return
+	}
+
 	limit := int64(20)
 	if s := r.URL.Query().Get("limit"); s != "" {
 		if v, err := strconv.ParseInt(s, 10, 64); err == nil && v > 0 && v <= 200 {
@@ -175,11 +225,12 @@ func (a *App) handleHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := a.DB.Query(`
-SELECT text, last_used_at, use_count
+SELECT shop, text, last_used_at, use_count
 FROM templates
+WHERE shop = ?
 ORDER BY last_used_at DESC
 LIMIT ?
-`, limit)
+`, shop, limit)
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
@@ -189,9 +240,12 @@ LIMIT ?
 	var out []Template
 	for rows.Next() {
 		var t Template
-		if err := rows.Scan(&t.Text, &t.LastUsedAt, &t.UseCount); err != nil {
+		if err := rows.Scan(&t.Shop, &t.Text, &t.LastUsedAt, &t.UseCount); err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
+		}
+		if t.Shop == "" {
+			t.Shop = a.DefaultShop
 		}
 		out = append(out, t)
 	}
@@ -214,10 +268,6 @@ func parseID(s string) (int64, bool) {
 
 func normalizeText(s string) string {
 	s = strings.TrimSpace(s)
-	// Collapse internal whitespace a bit (minimal, not fancy)
 	s = strings.Join(strings.Fields(s), " ")
 	return s
 }
-
-// Keep editor happy !
-var _ sql.Result

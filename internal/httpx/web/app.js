@@ -2,8 +2,10 @@ async function api(path, opts = {}) {
   const res = await fetch(path, {
     ...opts,
     headers: {
-      "Content-Type": "application/json",
+      // Only set JSON content-type if caller didn't override it.
       ...(opts.headers || {}),
+      "Content-Type":
+        (opts.headers && opts.headers["Content-Type"]) || "application/json",
     },
     cache: "no-store",
   });
@@ -26,32 +28,40 @@ async function login(password) {
     method: "POST",
     body: JSON.stringify({ password }),
   });
-  if (res.status === 204) return true;
-  return false;
+  return res.status === 204;
 }
 
 async function logout() {
   await api("/logout", { method: "POST" });
 }
 
-async function loadItems() {
-  const res = await api("/api/items");
+async function loadConfig() {
+  const res = await api("/api/config");
+  if (res.status === 401) return { unauthorized: true };
+  if (!res.ok) throw new Error(`config: ${res.status}`);
+  return { unauthorized: false, config: await res.json() };
+}
+
+async function loadItems(shop) {
+  const res = await api(`/api/items?shop=${encodeURIComponent(shop)}`);
   if (res.status === 401) return { unauthorized: true };
   if (!res.ok) throw new Error(`items: ${res.status}`);
   return { unauthorized: false, items: await res.json() };
 }
 
-async function loadHistory() {
-  const res = await api("/api/history?limit=20");
+async function loadHistory(shop) {
+  const res = await api(
+    `/api/history?shop=${encodeURIComponent(shop)}&limit=20`,
+  );
   if (res.status === 401) return { unauthorized: true };
   if (!res.ok) throw new Error(`history: ${res.status}`);
   return { unauthorized: false, history: await res.json() };
 }
 
-async function addItem(text) {
+async function addItem(shop, text) {
   const res = await api("/api/items", {
     method: "POST",
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({ shop, text }),
   });
   if (!res.ok) throw new Error(`add: ${res.status}`);
   return await res.json();
@@ -68,8 +78,13 @@ async function deleteItem(id) {
   if (!res.ok) throw new Error(`delete: ${res.status}`);
 }
 
-async function clearDone() {
-  const res = await api("/api/items/clear-done", { method: "POST" });
+async function clearDone(shop) {
+  const res = await api(
+    `/api/items/clear-done?shop=${encodeURIComponent(shop)}`,
+    {
+      method: "POST",
+    },
+  );
   if (!res.ok) throw new Error(`clear: ${res.status}`);
 }
 
@@ -109,7 +124,7 @@ function renderItems(items) {
     cbWrap.appendChild(mark);
 
     const txt = document.createElement("span");
-    txt.textContent = it.text;
+    txt.textContent = it.text; // shop is the active scope, don't prefix
     txt.className = "itemText" + (it.done ? " done" : "");
 
     const del = document.createElement("button");
@@ -144,10 +159,12 @@ function renderHistory(history) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "linkish";
-    btn.textContent = t.text;
+    btn.textContent = t.text; // shop is the active scope
+
     btn.addEventListener("click", async () => {
       try {
-        await addItem(t.text);
+        const shop = qs("shopSelect").value;
+        await addItem(shop, t.text);
         await refresh();
       } catch (e) {
         console.error(e);
@@ -159,8 +176,52 @@ function renderHistory(history) {
   }
 }
 
+// Populates select once, returns current selected shop.
+// On change, persists to localStorage and refreshes lists (shop scope).
+function ensureShopSelect(cfg) {
+  const sel = qs("shopSelect");
+  if (!sel) return cfg.defaultShop;
+
+  if (sel.dataset.ready !== "1") {
+    sel.innerHTML = "";
+    for (const s of cfg.shops || []) {
+      const opt = document.createElement("option");
+      opt.value = s;
+      opt.textContent = s;
+      sel.appendChild(opt);
+    }
+    sel.dataset.ready = "1";
+
+    sel.addEventListener("change", async () => {
+      localStorage.setItem("shoplist_shop", sel.value);
+      await refresh();
+    });
+  }
+
+  // Only apply preferred selection if it's different.
+  const saved = localStorage.getItem("shoplist_shop");
+  const preferred =
+    saved && (cfg.shops || []).includes(saved) ? saved : cfg.defaultShop;
+
+  if (preferred && sel.value !== preferred) {
+    sel.value = preferred;
+  }
+
+  return sel.value || cfg.defaultShop;
+}
+
 async function refresh() {
-  const a = await loadItems();
+  const c = await loadConfig();
+  if (c.unauthorized) {
+    show(qs("loginCard"));
+    hide(qs("appCard"));
+    hide(qs("btnLogout"));
+    return;
+  }
+
+  const shop = ensureShopSelect(c.config);
+
+  const a = await loadItems(shop);
   if (a.unauthorized) {
     show(qs("loginCard"));
     hide(qs("appCard"));
@@ -168,7 +229,7 @@ async function refresh() {
     return;
   }
 
-  const b = await loadHistory();
+  const b = await loadHistory(shop);
   if (b.unauthorized) {
     show(qs("loginCard"));
     hide(qs("appCard"));
@@ -188,6 +249,29 @@ function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
   navigator.serviceWorker.register("/sw.js").catch(() => {});
 }
+
+// iOS: tap outside inputs/selects to close keyboard
+const blurIfNeeded = (ev) => {
+  const ae = document.activeElement;
+  if (!ae) return;
+
+  const tag = ae.tagName;
+  const isEditable = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+  if (!isEditable) return;
+
+  const t = ev.target;
+  if (!t) return;
+
+  const ttag = t.tagName;
+  const isTargetEditable =
+    ttag === "INPUT" || ttag === "TEXTAREA" || ttag === "SELECT";
+  if (isTargetEditable) return;
+
+  ae.blur();
+};
+
+document.addEventListener("pointerdown", blurIfNeeded, { passive: true });
+document.addEventListener("touchstart", blurIfNeeded, { passive: true });
 
 document.addEventListener("DOMContentLoaded", () => {
   registerServiceWorker();
@@ -218,9 +302,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const text = inp.value.trim();
     if (!text) return;
 
+    const shop = qs("shopSelect") ? qs("shopSelect").value : "";
+
     try {
-      await addItem(text);
+      await addItem(shop, text);
       inp.value = "";
+      inp.focus();
       await refresh();
     } catch (e2) {
       console.error(e2);
@@ -229,7 +316,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   qs("btnClearDone").addEventListener("click", async () => {
     try {
-      await clearDone();
+      const shop = qs("shopSelect") ? qs("shopSelect").value : "";
+      await clearDone(shop);
       await refresh();
     } catch (e) {
       console.error(e);
