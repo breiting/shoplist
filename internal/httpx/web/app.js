@@ -369,6 +369,14 @@ document.addEventListener("DOMContentLoaded", () => {
     await refresh();
   });
 
+  qs("btnRefresh")?.addEventListener("click", async () => {
+    try {
+      await refresh();
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
   qs("addForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const inp = qs("newText");
@@ -396,6 +404,82 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error(e);
     }
   });
+
+  // Pull-to-refresh (PWA-friendly, minimal)
+  (function setupPullToRefresh() {
+    const ptr = qs("ptr");
+    const ptrText = qs("ptrText");
+    if (!ptr || !ptrText) return;
+
+    let startY = 0;
+    let pulling = false;
+    let armed = false;
+    const threshold = 60;
+
+    const showEl = (el) => el.classList.remove("hidden");
+    const hideEl = (el) => el.classList.add("hidden");
+
+    window.addEventListener(
+      "touchstart",
+      (e) => {
+        if (e.touches.length !== 1) return;
+        if (window.scrollY !== 0) return; // only at top
+        startY = e.touches[0].clientY;
+        pulling = true;
+        armed = false;
+        ptrText.textContent = "Pull to refresh";
+        showEl(ptr);
+      },
+      { passive: true },
+    );
+
+    window.addEventListener(
+      "touchmove",
+      (e) => {
+        if (!pulling) return;
+        const y = e.touches[0].clientY;
+        const dy = y - startY;
+        if (dy <= 0) {
+          ptrText.textContent = "Pull to refresh";
+          armed = false;
+          return;
+        }
+        if (dy > threshold) {
+          ptrText.textContent = "Release to refresh";
+          armed = true;
+        } else {
+          ptrText.textContent = "Pull to refresh";
+          armed = false;
+        }
+      },
+      { passive: true },
+    );
+
+    window.addEventListener(
+      "touchend",
+      async () => {
+        if (!pulling) return;
+        pulling = false;
+        if (armed) {
+          ptrText.textContent = "Refreshing…";
+          try {
+            await refresh();
+          } catch (e) {
+            console.error(e);
+          }
+        }
+        hideEl(ptr);
+        armed = false;
+      },
+      { passive: true },
+    );
+
+    window.addEventListener("touchcancel", () => {
+      pulling = false;
+      armed = false;
+      hideEl(ptr);
+    });
+  })();
 
   refresh().catch(console.error);
 });
