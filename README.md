@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8?style=flat)](https://web.dev/progressive-web-apps/)
 
-**Works on iPhone (Safari) and GrapheneOS (Chromium) · Installable as a PWA · Single binary · Zero subscriptions**
+**Works on iPhone (Safari) and GrapheneOS · Installable as a PWA · Single binary · Zero subscriptions**
 
 ![shoplist screenshot](assets/screenshot.png)
 
@@ -72,12 +72,6 @@ Open [http://localhost:8080](http://localhost:8080) and start shopping. 🎉
 go build -o shoplist ./cmd/shoplist
 ```
 
-### Cross-compile for Linux amd64
-
-```bash
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o shoplist ./cmd/shoplist
-```
-
 ## ⚙️ Configuration
 
 | Variable                    | Description                            |
@@ -130,4 +124,4 @@ Back up the whole directory. That's it. Restore by copying it back. 🎯
 
 ## 📄 License
 
-MIT — use it, fork it, self-host it. ❤️
+MIT - use it, fork it, self-host it. ❤️
