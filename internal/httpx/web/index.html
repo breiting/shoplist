@@ -15,7 +15,7 @@
       <header class="top">
         <h1>Einkaufsliste</h1>
         <button id="btnLogout" type="button" class="ghost hidden">
-          Logout
+          Ausloggen
         </button>
       </header>
 
@@ -29,7 +29,7 @@
             autocomplete="current-password"
             required
           />
-          <button type="submit">Login</button>
+          <button type="submit">Einloggen</button>
           <p id="loginErr" class="err hidden"></p>
         </form>
       </section>
@@ -43,7 +43,7 @@
             placeholder="Artikel …"
             autocomplete="off"
           />
-          <button type="submit">Add</button>
+          <button type="submit" id="btnAdd" aria-label="Hinzufügen">+</button>
         </form>
 
         <div class="split">

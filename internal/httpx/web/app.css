@@ -149,12 +149,13 @@ select {
 
 button {
   height: var(--control-h);
-  padding: 0 14px;
+  padding: 0 16px;
   border-radius: var(--control-r);
   border: 1px solid var(--subtle);
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
   color: var(--text);
-  font-weight: 650;
+  font-size: 15px;
+  font-weight: 700;
   letter-spacing: -0.01em;
   white-space: nowrap;
 }
@@ -332,4 +333,14 @@ button.linkish:hover {
 
 .hidden {
   display: none !important;
+}
+
+#btnAdd {
+  width: var(--control-h);
+  padding: 0;
+  font-size: 22px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
