@@ -127,6 +127,11 @@ CREATE INDEX IF NOT EXISTS idx_templates_last_used ON templates(last_used_at);
 		if _, err := db.Exec(`ALTER TABLE items ADD COLUMN shop TEXT NOT NULL DEFAULT ''`); err != nil {
 			return err
 		}
+
+		if _, err := db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS uq_items_shop_text ON items(shop, text)`); err != nil {
+			return err
+		}
+
 		// helpful index
 		_, _ = db.Exec(`CREATE INDEX IF NOT EXISTS idx_items_shop_done_updated ON items(shop, done, updated_at)`)
 	}

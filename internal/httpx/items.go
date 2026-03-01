@@ -109,7 +109,47 @@ func (a *App) handleAddItem(w http.ResponseWriter, r *http.Request) {
 
 	now := time.Now().Unix()
 
-	// Insert item
+	// Dedup: If item already exists for (shop,text), reuse it.
+	var existingID int64
+	var existingDone int
+	err := a.DB.QueryRow(
+		`SELECT id, done FROM items WHERE shop = ? AND text = ?`,
+		shop, txt,
+	).Scan(&existingID, &existingDone)
+
+	if err == nil {
+		// Exists: either reactivate or just bump timestamp
+		if existingDone != 0 {
+			_, err = a.DB.Exec(`UPDATE items SET done = 0, updated_at = ? WHERE id = ?`, now, existingID)
+		} else {
+			_, err = a.DB.Exec(`UPDATE items SET updated_at = ? WHERE id = ?`, now, existingID)
+		}
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		// Upsert template history per shop
+		_, _ = a.DB.Exec(`
+INSERT INTO templates(shop, text, last_used_at, use_count)
+VALUES(?, ?, ?, 1)
+ON CONFLICT(shop, text) DO UPDATE SET
+	last_used_at=excluded.last_used_at,
+	use_count=use_count+1
+`, shop, txt, now)
+
+		// Return existing item
+		writeJSON(w, Item{ID: existingID, Shop: shop, Text: txt, Done: false, UpdatedAt: now})
+		return
+	}
+
+	// If it's "no rows", continue to insert; otherwise error
+	if err.Error() != "sql: no rows in result set" {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	// Insert new item
 	res, err := a.DB.Exec(
 		`INSERT INTO items(shop, text, done, created_at, updated_at) VALUES(?, ?, 0, ?, ?)`,
 		shop, txt, now, now,
