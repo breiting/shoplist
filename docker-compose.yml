@@ -14,10 +14,7 @@ services:
       SHOPLIST_SHOPS: "Spar,Billa,Bauernladen"
       SHOPLIST_DEFAULT_SHOP: "Spar"
     volumes:
-      - shoplist_data:/data
+      - ./data:/data
     ports:
       - "8080:8080"
     restart: unless-stopped
-
-volumes:
-  shoplist_data:
