@@ -1,18 +1,20 @@
 services:
   shoplist:
-    build: .
+    build:
+      context: .
+      args:
+        RUN_TESTS: "0"
     container_name: shoplist
     environment:
-      - SHOPLIST_ADDR=:8080
-      - SHOPLIST_PASSWORD=changeme
-      - SHOPLIST_DATA_DIR=/data
-      - SHOPLIST_SESSION_TTL_DAYS=180
-      - SHOPLIST_COOKIE_SECURE=0
+      SHOPLIST_ADDR: ":8080"
+      SHOPLIST_PASSWORD: "${SHOPLIST_PASSWORD}"
+      SHOPLIST_DATA_DIR: "/data"
+      SHOPLIST_SESSION_TTL_DAYS: "180"
+      SHOPLIST_COOKIE_SECURE: "0" # set 1 if you serve with HTTPS
+      SHOPLIST_SHOPS: "Spar,Billa,Bauernladen"
+      SHOPLIST_DEFAULT_SHOP: "Spar"
     volumes:
-      - shoplist_data:/data
+      - ./data:/data
     ports:
       - "8080:8080"
     restart: unless-stopped
-
-volumes:
-  shoplist_data:

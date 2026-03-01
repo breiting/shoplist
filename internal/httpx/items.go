@@ -1,7 +1,9 @@
 package httpx
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,6 +14,7 @@ type Item struct {
 	ID        int64  `json:"id"`
 	Shop      string `json:"shop"`
 	Text      string `json:"text"`
+	Qty       string `json:"qty"`
 	Done      bool   `json:"done"`
 	UpdatedAt int64  `json:"updatedAt"`
 }
@@ -29,6 +32,9 @@ func (a *App) registerItemRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /api/items/{id}/toggle", a.requireAuth(http.HandlerFunc(a.handleToggleItem)))
 	mux.Handle("DELETE /api/items/{id}", a.requireAuth(http.HandlerFunc(a.handleDeleteItem)))
 	mux.Handle("POST /api/items/clear-done", a.requireAuth(http.HandlerFunc(a.handleClearDone)))
+
+	// v1.1 qty
+	mux.Handle("POST /api/items/{id}/qty", a.requireAuth(http.HandlerFunc(a.handleSetQty)))
 
 	mux.Handle("GET /api/history", a.requireAuth(http.HandlerFunc(a.handleHistory)))
 }
@@ -52,7 +58,7 @@ func (a *App) handleListItems(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := a.DB.Query(
-		`SELECT id, shop, text, done, updated_at
+		`SELECT id, shop, text, qty, done, updated_at
 		 FROM items
 		 WHERE shop = ?
 		 ORDER BY done ASC, updated_at DESC, id DESC`,
@@ -68,7 +74,7 @@ func (a *App) handleListItems(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var it Item
 		var doneInt int
-		if err := rows.Scan(&it.ID, &it.Shop, &it.Text, &doneInt, &it.UpdatedAt); err != nil {
+		if err := rows.Scan(&it.ID, &it.Shop, &it.Text, &it.Qty, &doneInt, &it.UpdatedAt); err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
@@ -86,6 +92,7 @@ func (a *App) handleAddItem(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Shop string `json:"shop"`
 		Text string `json:"text"`
+		Qty  string `json:"qty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
@@ -107,29 +114,36 @@ func (a *App) handleAddItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	qty := strings.TrimSpace(req.Qty) // optional; keep as-is
+
 	now := time.Now().Unix()
 
 	// Dedup: If item already exists for (shop,text), reuse it.
-	var existingID int64
-	var existingDone int
+	var existing Item
+	var doneInt int
 	err := a.DB.QueryRow(
-		`SELECT id, done FROM items WHERE shop = ? AND text = ?`,
+		`SELECT id, shop, text, qty, done, updated_at FROM items WHERE shop = ? AND text = ?`,
 		shop, txt,
-	).Scan(&existingID, &existingDone)
+	).Scan(&existing.ID, &existing.Shop, &existing.Text, &existing.Qty, &doneInt, &existing.UpdatedAt)
 
 	if err == nil {
-		// Exists: either reactivate or just bump timestamp
-		if existingDone != 0 {
-			_, err = a.DB.Exec(`UPDATE items SET done = 0, updated_at = ? WHERE id = ?`, now, existingID)
+		// Exists: reactivate if done, bump updated_at. Qty only changes if provided (non-empty).
+		newQty := existing.Qty
+		if qty != "" {
+			newQty = qty
+		}
+
+		if doneInt != 0 {
+			_, err = a.DB.Exec(`UPDATE items SET done = 0, qty = ?, updated_at = ? WHERE id = ?`, newQty, now, existing.ID)
 		} else {
-			_, err = a.DB.Exec(`UPDATE items SET updated_at = ? WHERE id = ?`, now, existingID)
+			_, err = a.DB.Exec(`UPDATE items SET qty = ?, updated_at = ? WHERE id = ?`, newQty, now, existing.ID)
 		}
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 
-		// Upsert template history per shop
+		// Update history (NO qty stored in templates by design)
 		_, _ = a.DB.Exec(`
 INSERT INTO templates(shop, text, last_used_at, use_count)
 VALUES(?, ?, ?, 1)
@@ -138,21 +152,26 @@ ON CONFLICT(shop, text) DO UPDATE SET
 	use_count=use_count+1
 `, shop, txt, now)
 
-		// Return existing item
-		writeJSON(w, Item{ID: existingID, Shop: shop, Text: txt, Done: false, UpdatedAt: now})
+		writeJSON(w, Item{
+			ID:        existing.ID,
+			Shop:      shop,
+			Text:      txt,
+			Qty:       newQty,
+			Done:      false,
+			UpdatedAt: now,
+		})
 		return
 	}
 
-	// If it's "no rows", continue to insert; otherwise error
-	if err.Error() != "sql: no rows in result set" {
+	if !errors.Is(err, sql.ErrNoRows) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
 	// Insert new item
 	res, err := a.DB.Exec(
-		`INSERT INTO items(shop, text, done, created_at, updated_at) VALUES(?, ?, 0, ?, ?)`,
-		shop, txt, now, now,
+		`INSERT INTO items(shop, text, qty, done, created_at, updated_at) VALUES(?, ?, ?, 0, ?, ?)`,
+		shop, txt, qty, now, now,
 	)
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
@@ -160,7 +179,7 @@ ON CONFLICT(shop, text) DO UPDATE SET
 	}
 	id, _ := res.LastInsertId()
 
-	// Upsert template history per shop
+	// Update history (NO qty stored in templates)
 	_, _ = a.DB.Exec(`
 INSERT INTO templates(shop, text, last_used_at, use_count)
 VALUES(?, ?, ?, 1)
@@ -171,7 +190,52 @@ ON CONFLICT(shop, text) DO UPDATE SET
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	writeJSON(w, Item{ID: id, Shop: shop, Text: txt, Done: false, UpdatedAt: now})
+	writeJSON(w, Item{ID: id, Shop: shop, Text: txt, Qty: qty, Done: false, UpdatedAt: now})
+}
+
+func (a *App) handleSetQty(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(r.PathValue("id"))
+	if !ok {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	var req struct {
+		Qty string `json:"qty"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	qty := strings.TrimSpace(req.Qty)
+	now := time.Now().Unix()
+
+	res, err := a.DB.Exec(`UPDATE items SET qty = ?, updated_at = ? WHERE id = ?`, qty, now, id)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	aff, _ := res.RowsAffected()
+	if aff == 0 {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+
+	var it Item
+	var doneInt int
+	err = a.DB.QueryRow(`SELECT id, shop, text, qty, done, updated_at FROM items WHERE id = ?`, id).
+		Scan(&it.ID, &it.Shop, &it.Text, &it.Qty, &doneInt, &it.UpdatedAt)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	if it.Shop == "" {
+		it.Shop = a.DefaultShop
+	}
+	it.Done = doneInt != 0
+
+	writeJSON(w, it)
 }
 
 func (a *App) handleToggleItem(w http.ResponseWriter, r *http.Request) {
@@ -201,8 +265,8 @@ WHERE id = ?
 
 	var it Item
 	var doneInt int
-	err = a.DB.QueryRow(`SELECT id, shop, text, done, updated_at FROM items WHERE id = ?`, id).
-		Scan(&it.ID, &it.Shop, &it.Text, &doneInt, &it.UpdatedAt)
+	err = a.DB.QueryRow(`SELECT id, shop, text, qty, done, updated_at FROM items WHERE id = ?`, id).
+		Scan(&it.ID, &it.Shop, &it.Text, &it.Qty, &doneInt, &it.UpdatedAt)
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return

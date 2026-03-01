@@ -10,7 +10,6 @@
   font-size: 16px;
   line-height: 1.35;
 
-  /* Dark theme tokens */
   --bg: #0b0b0f;
   --card: rgba(28, 28, 30, 0.85);
   --card-border: rgba(255, 255, 255, 0.08);
@@ -20,11 +19,9 @@
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
   --radius: 16px;
 
-  /* Sizing */
   --control-h: 44px;
   --control-r: 14px;
 
-  /* Form widths */
   --form-max: 520px;
   --add-max: 700px;
   --shop-col: 160px;
@@ -58,7 +55,6 @@ body {
   color: var(--text);
 }
 
-/* Layout */
 .wrap {
   max-width: 820px;
   margin: 0 auto;
@@ -193,7 +189,7 @@ button.linkish:hover {
   text-decoration-color: rgba(255, 255, 255, 0.35);
 }
 
-/* Forms sizing (tight and consistent) */
+/* Forms sizing */
 #loginForm {
   max-width: var(--form-max);
   margin: 0 auto;
@@ -201,6 +197,7 @@ button.linkish:hover {
 
 #loginForm button {
   width: 100%;
+  font-size: 16px;
 }
 
 #addForm {
@@ -213,7 +210,24 @@ button.linkish:hover {
 }
 
 #newText {
-  min-width: 0; /* critical in CSS grid: allow shrinking without overflow */
+  min-width: 0;
+}
+
+/* "+" button (assumes id="btnAdd") */
+#btnAdd {
+  width: var(--control-h);
+  padding: 0;
+  font-size: 22px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#btnLogout,
+#btnClearDone {
+  font-size: 15px;
+  font-weight: 700;
 }
 
 @media (max-width: 520px) {
@@ -248,9 +262,10 @@ button.linkish:hover {
   margin: 6px 0 0 0;
 }
 
+/* Items list rows: checkbox | text | qty | delete */
 .li {
   display: grid;
-  grid-template-columns: 34px 1fr 38px;
+  grid-template-columns: 34px 1fr auto 38px;
   align-items: center;
   gap: 12px;
   padding: 14px 6px;
@@ -261,7 +276,18 @@ button.linkish:hover {
   border-top: none;
 }
 
-/* Custom checkbox (Apple-ish) */
+/* History list rows are simpler */
+.liHistory {
+  display: block;
+  padding: 10px 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.liHistory:first-child {
+  border-top: none;
+}
+
+/* Custom checkbox */
 .cb {
   width: 26px;
   height: 26px;
@@ -318,6 +344,41 @@ button.linkish:hover {
   color: rgba(255, 255, 255, 0.55);
 }
 
+/* Qty UI */
+.qtyHost {
+  display: inline-flex;
+  justify-content: flex-end;
+}
+
+.qtyPill {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.qtyPill.empty {
+  color: rgba(255, 255, 255, 0.55);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.qtyInput {
+  width: 92px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  outline: none;
+  font-size: 14px;
+  line-height: 1;
+}
+
 .muted {
   color: var(--muted);
 }
@@ -333,14 +394,4 @@ button.linkish:hover {
 
 .hidden {
   display: none !important;
-}
-
-#btnAdd {
-  width: var(--control-h);
-  padding: 0;
-  font-size: 22px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
