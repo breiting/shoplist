@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="theme-color" content="#ffffff" />
-    <title>shoplist</title>
+    <title>Einkaufsliste</title>
 
     <link rel="manifest" href="/manifest.json" />
     <link rel="stylesheet" href="/app.css" />
@@ -13,7 +13,7 @@
   <body>
     <main class="wrap">
       <header class="top">
-        <h1>shoplist</h1>
+        <h1>Einkaufsliste</h1>
         <button id="btnLogout" type="button" class="ghost hidden">
           Logout
         </button>
@@ -25,7 +25,7 @@
           <input
             id="pw"
             type="password"
-            placeholder="Household password"
+            placeholder="Haushaltspasswort"
             autocomplete="current-password"
             required
           />
@@ -40,7 +40,7 @@
           <input
             id="newText"
             type="text"
-            placeholder="Add item…"
+            placeholder="Artikel …"
             autocomplete="off"
           />
           <button type="submit">Add</button>
@@ -48,23 +48,21 @@
 
         <div class="split">
           <section>
-            <h2>List</h2>
+            <h2>Liste</h2>
             <ul id="items" class="list"></ul>
             <div class="row end">
               <button id="btnClearDone" type="button" class="ghost">
-                Clear done
+                Liste löschen
               </button>
             </div>
           </section>
 
           <section>
-            <h2>Last used</h2>
+            <h2>Zuletzt gekauft</h2>
             <ul id="history" class="list"></ul>
           </section>
         </div>
       </section>
-
-      <p class="muted small">Tip: Add to Home Screen to use as a PWA.</p>
     </main>
 
     <script src="/app.js"></script>

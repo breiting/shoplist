@@ -23,11 +23,22 @@
   /* Sizing */
   --control-h: 44px;
   --control-r: 14px;
+
+  /* Form widths */
+  --form-max: 520px;
+  --add-max: 700px;
+  --shop-col: 160px;
 }
 
 html,
 body {
   height: 100%;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 body {
@@ -145,6 +156,7 @@ button {
   color: var(--text);
   font-weight: 650;
   letter-spacing: -0.01em;
+  white-space: nowrap;
 }
 
 button:active {
@@ -180,18 +192,27 @@ button.linkish:hover {
   text-decoration-color: rgba(255, 255, 255, 0.35);
 }
 
-/* Forms sizing (fix overly long fields) */
+/* Forms sizing (tight and consistent) */
 #loginForm {
-  max-width: 520px;
+  max-width: var(--form-max);
   margin: 0 auto;
 }
 
+#loginForm button {
+  width: 100%;
+}
+
 #addForm {
-  max-width: 700px;
+  max-width: var(--add-max);
   margin: 0 auto 14px auto;
   display: grid;
-  grid-template-columns: 160px 1fr auto;
+  grid-template-columns: var(--shop-col) minmax(0, 1fr) auto;
   gap: 10px;
+  align-items: center;
+}
+
+#newText {
+  min-width: 0; /* critical in CSS grid: allow shrinking without overflow */
 }
 
 @media (max-width: 520px) {
@@ -206,7 +227,7 @@ button.linkish:hover {
   display: grid;
   grid-template-columns: 1fr;
   gap: 18px;
-  margin-top: 10px; /* space after add row */
+  margin-top: 10px;
 }
 
 @media (min-width: 700px) {
@@ -216,7 +237,7 @@ button.linkish:hover {
 }
 
 .split > section {
-  padding-top: 6px; /* a bit of air before headings */
+  padding-top: 6px;
 }
 
 /* Lists */
