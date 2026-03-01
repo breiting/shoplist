@@ -1,4 +1,5 @@
 :root {
+  /* System font stack feels close to Apple UI */
   font-family:
     system-ui,
     -apple-system,
@@ -8,19 +9,49 @@
     Arial,
     sans-serif;
   font-size: 16px;
-  line-height: 1.4;
+  line-height: 1.35;
+
+  /* Dark theme tokens */
+  --bg: #0b0b0f;
+  --card: rgba(28, 28, 30, 0.85);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --text: rgba(255, 255, 255, 0.92);
+  --muted: rgba(255, 255, 255, 0.6);
+  --subtle: rgba(255, 255, 255, 0.1);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  --radius: 16px;
+}
+
+@media (prefers-color-scheme: light) {
+  /* Keep it dark anyway. If you want "auto", we can invert this later. */
+}
+
+html,
+body {
+  height: 100%;
 }
 
 body {
   margin: 0;
-  background: #fff;
-  color: #111;
+  background:
+    radial-gradient(
+      1200px 600px at 20% 0%,
+      rgba(50, 50, 70, 0.35),
+      transparent 50%
+    ),
+    radial-gradient(
+      900px 500px at 80% 20%,
+      rgba(70, 50, 90, 0.25),
+      transparent 55%
+    ),
+    var(--bg);
+  color: var(--text);
 }
 
 .wrap {
   max-width: 780px;
   margin: 0 auto;
-  padding: 16px;
+  padding: 18px 16px 24px;
 }
 
 .top {
@@ -28,23 +59,33 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  margin-bottom: 12px;
 }
 
 h1 {
-  margin: 8px 0 16px 0;
+  margin: 8px 0;
   font-size: 22px;
+  letter-spacing: -0.02em;
 }
 
 h2 {
-  margin: 0 0 10px 0;
-  font-size: 16px;
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .card {
-  border: 1px solid #ddd;
-  border-radius: 10px;
-  padding: 12px;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 14px;
   margin-bottom: 12px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 .row {
@@ -66,23 +107,48 @@ h2 {
 input[type="text"],
 input[type="password"] {
   width: 100%;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid #ccc;
+  padding: 12px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--subtle);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
   outline: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+input:focus {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 button {
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid #ccc;
-  background: #fafafa;
+  padding: 11px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--subtle);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+button:active {
+  transform: translateY(0.5px);
 }
 
 button.ghost {
   background: transparent;
   border-color: transparent;
-  padding: 6px 10px;
+  padding: 8px 10px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+button.ghost:hover {
+  color: var(--text);
 }
 
 button.linkish {
@@ -91,8 +157,13 @@ button.linkish {
   padding: 0;
   text-align: left;
   font: inherit;
-  color: inherit;
+  color: var(--text);
+  text-decoration: none;
+}
+
+button.linkish:hover {
   text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, 0.35);
 }
 
 .split {
@@ -107,6 +178,7 @@ button.linkish {
   }
 }
 
+/* Lists */
 .list {
   list-style: none;
   padding: 0;
@@ -115,33 +187,83 @@ button.linkish {
 
 .li {
   display: grid;
-  grid-template-columns: 22px 1fr 40px;
+  grid-template-columns: 34px 1fr 38px;
   align-items: center;
   gap: 10px;
-  padding: 8px 0;
-  border-top: 1px solid #eee;
+  padding: 10px 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .li:first-child {
   border-top: none;
 }
 
-.done {
-  text-decoration: line-through;
-  color: #666;
+/* Custom checkbox (Apple-ish) */
+.cb {
+  width: 26px;
+  height: 26px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.err {
-  color: #b00020;
+.cb input {
+  /* hide native checkbox */
+  appearance: none;
+  -webkit-appearance: none;
+  width: 0;
+  height: 0;
   margin: 0;
 }
 
+.cb .mark {
+  width: 12px;
+  height: 7px;
+  border-left: 3px solid transparent;
+  border-bottom: 3px solid transparent;
+  transform: rotate(-45deg);
+  opacity: 0;
+}
+
+.cb[data-checked="1"] {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.cb[data-checked="1"] .mark {
+  border-left-color: rgba(255, 255, 255, 0.9);
+  border-bottom-color: rgba(255, 255, 255, 0.9);
+  opacity: 1;
+}
+
+.itemText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+
+.itemText.done {
+  text-decoration: line-through;
+  color: rgba(255, 255, 255, 0.55);
+}
+
 .muted {
-  color: #555;
+  color: var(--muted);
 }
 
 .small {
   font-size: 13px;
+}
+
+.err {
+  color: #ff6b6b;
+  margin: 0;
 }
 
 .hidden {
