@@ -28,6 +28,15 @@
     <main class="wrap">
       <header class="top">
         <h1>Einkaufsliste</h1>
+        <button
+          type="button"
+          id="btnRefresh"
+          class="ghost"
+          title="Refresh"
+          aria-label="Refresh"
+        >
+          ↻
+        </button>
         <button id="btnLogout" type="button" class="ghost hidden">
           Ausloggen
         </button>
@@ -49,6 +58,10 @@
       </section>
 
       <section id="appCard" class="card hidden">
+        <div id="ptr" class="ptr hidden">
+          <div class="ptrText" id="ptrText">Pull to refresh</div>
+        </div>
+
         <form id="addForm" class="row">
           <select id="shopSelect" aria-label="Shop"></select>
           <input
