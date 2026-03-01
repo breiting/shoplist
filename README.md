@@ -34,6 +34,7 @@ Most shopping list apps are either cloud-first, bloated, or privacy-hostile. **S
 - 🧹 **Clear completed items** instantly
 - 🕐 **"Last used" history** per shop
 - ⚖️ **Optional quantity** per item — free text: `2`, `10 dag`, `250 g`, …
+- ⚖️ **Refresh** with gesture
 - 📱 **PWA installable** on iOS + GrapheneOS (Add to Home Screen)
 
 ## 🧱 Tech Stack
