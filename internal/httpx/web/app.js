@@ -100,6 +100,15 @@ function renderItems(items) {
   const ul = qs("items");
   ul.innerHTML = "";
 
+  // Be defensive: backend should return [], but never trust the network.
+  if (!Array.isArray(items) || items.length === 0) {
+    const li = document.createElement("li");
+    li.className = "liEmpty";
+    li.textContent = "No items.";
+    ul.appendChild(li);
+    return;
+  }
+
   for (const it of items) {
     const li = document.createElement("li");
     li.className = "li";

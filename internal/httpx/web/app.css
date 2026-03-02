@@ -360,6 +360,16 @@ button.linkish:hover {
   opacity: 1;
 }
 
+.liEmpty {
+  padding: 12px 6px;
+  color: rgba(255, 255, 255, 0.55);
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.liEmpty:first-child {
+  border-top: none;
+}
+
 .itemText {
   overflow: hidden;
   text-overflow: ellipsis;
