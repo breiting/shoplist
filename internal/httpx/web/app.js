@@ -294,16 +294,10 @@ async function refresh() {
 
   const shop = ensureShopSelect(c.config);
 
-  const a = await loadItems(shop);
-  if (a.unauthorized) {
-    show(qs("loginCard"));
-    hide(qs("appCard"));
-    hide(qs("btnLogout"));
-    return;
-  }
+  // Load both in parallel; never skip history just because items are empty
+  const [a, b] = await Promise.all([loadItems(shop), loadHistory(shop)]);
 
-  const b = await loadHistory(shop);
-  if (b.unauthorized) {
+  if (a.unauthorized || b.unauthorized) {
     show(qs("loginCard"));
     hide(qs("appCard"));
     hide(qs("btnLogout"));
@@ -405,7 +399,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Pull-to-refresh (PWA-friendly, minimal)
+  // Pull-to-refresh (cleaner trigger)
   (function setupPullToRefresh() {
     const ptr = qs("ptr");
     const ptrText = qs("ptrText");
@@ -414,21 +408,24 @@ document.addEventListener("DOMContentLoaded", () => {
     let startY = 0;
     let pulling = false;
     let armed = false;
-    const threshold = 60;
+    let visible = false;
 
     const showEl = (el) => el.classList.remove("hidden");
     const hideEl = (el) => el.classList.add("hidden");
+
+    const thresholdShow = 20; // when to first show indicator
+    const thresholdRefresh = 60; // when refresh becomes armed
 
     window.addEventListener(
       "touchstart",
       (e) => {
         if (e.touches.length !== 1) return;
-        if (window.scrollY !== 0) return; // only at top
+        if (window.scrollY !== 0) return;
+
         startY = e.touches[0].clientY;
         pulling = true;
         armed = false;
-        ptrText.textContent = "Pull to refresh";
-        showEl(ptr);
+        visible = false;
       },
       { passive: true },
     );
@@ -437,14 +434,22 @@ document.addEventListener("DOMContentLoaded", () => {
       "touchmove",
       (e) => {
         if (!pulling) return;
+
         const y = e.touches[0].clientY;
         const dy = y - startY;
-        if (dy <= 0) {
+
+        if (dy <= 0) return;
+
+        // Only show indicator after small pull
+        if (!visible && dy > thresholdShow) {
           ptrText.textContent = "Pull to refresh";
-          armed = false;
-          return;
+          showEl(ptr);
+          visible = true;
         }
-        if (dy > threshold) {
+
+        if (!visible) return;
+
+        if (dy > thresholdRefresh) {
           ptrText.textContent = "Release to refresh";
           armed = true;
         } else {
@@ -459,7 +464,9 @@ document.addEventListener("DOMContentLoaded", () => {
       "touchend",
       async () => {
         if (!pulling) return;
+
         pulling = false;
+
         if (armed) {
           ptrText.textContent = "Refreshing…";
           try {
@@ -468,8 +475,10 @@ document.addEventListener("DOMContentLoaded", () => {
             console.error(e);
           }
         }
-        hideEl(ptr);
+
+        if (visible) hideEl(ptr);
         armed = false;
+        visible = false;
       },
       { passive: true },
     );
@@ -477,6 +486,7 @@ document.addEventListener("DOMContentLoaded", () => {
     window.addEventListener("touchcancel", () => {
       pulling = false;
       armed = false;
+      visible = false;
       hideEl(ptr);
     });
   })();
