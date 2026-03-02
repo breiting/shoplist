@@ -11,6 +11,12 @@ import (
 	"github.com/breiting/shoplist/internal/httpx"
 )
 
+var (
+	Version   = "dev"
+	Commit    = "none"
+	BuildTime = "unknown"
+)
+
 func main() {
 	addr := getenv("SHOPLIST_ADDR", ":8080")
 
@@ -18,10 +24,13 @@ func main() {
 		Addr: addr,
 	})
 
+	log.Printf("ShopList starting ...")
+	log.Printf("version=%s commit=%s built=%s", Version, Commit, BuildTime)
+
 	// Start server
 	errCh := make(chan error, 1)
 	go func() {
-		log.Printf("shoplist listening on %s", addr)
+		log.Printf("ShopList listening on %s", addr)
 		errCh <- srv.ListenAndServe()
 	}()
 

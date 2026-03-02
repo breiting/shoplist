@@ -4,6 +4,9 @@ services:
       context: .
       args:
         RUN_TESTS: "0"
+        VERSION: "v1.1.0"
+        COMMIT: "${GIT_COMMIT}"
+        BUILD_TIME: "${BUILD_TIME}"
     container_name: shoplist
     environment:
       SHOPLIST_ADDR: ":8080"

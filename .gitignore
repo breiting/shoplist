@@ -3,3 +3,4 @@ data/shoplist.db-shm
 data/shoplist.db-wal
 shoplist-icons.zip
 .env
+shoplist
